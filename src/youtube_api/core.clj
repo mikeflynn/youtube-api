@@ -6,7 +6,6 @@
   	        [clojure.data.json :as json]
   	        [clj-time.format :as time-format]))
 
-(def base-url "https://www.googleapis.com/youtube/v3")
 (def api-key "AIzaSyA0Q9pv2p0MlYAWDlmyPcN19o59W31ytTI")
 (def client-id "320722306436-p6qjg69jvomcda1j77a0nee1uo40omia.apps.googleusercontent.com")
 (def client-secret "PTBLJmrqJL4oENO1PPOAe2To")
@@ -14,7 +13,8 @@
 (def user {
 	:refresh_token "1/7qU7y2w3hsJRlRUlIjwaY7enunqRRSLrjJ8j8dDvaC8"
 	:access_token false
-	:timeout 0})
+	:timeout 0
+  :ip_address false})
 
 (defn set-user [refresh_token access_token ip_address]
   (def user (merge
@@ -24,9 +24,13 @@
      :ip_address ip_address
      :timeout 0})))
 
-(defn date_format [date]
+(defn date_format_iso8601 [date]
 	(let [ISO8601 (time-format/formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ")]
 		(time-format/unparse ISO8601 (if (nil? date) (now) (from-string date)))))
+
+(defn date_format_yyyymmdd [date]
+  (let [YYYYMMDD (time-format/formatter "yyyy-MM-dd")]
+    (time-format/unparse ISO8601 (if (nil? date) (now) (from-string date)))))
 
 (defn query-string [params]
 	(clojure.string/join "&" (for [[k v] params] (str (name k) "=" v))))
@@ -44,23 +48,19 @@
 		  (throw (Exception. "Error: No authorization response!"))))
 	user)
 
-(defn api-request [endpoint params limit headers private data]
+(defn api-request [endpoint params headers private]
   "Requests feed, handles recursing for pagination, throws exception for no authorization."
   (into headers
   	(into {"User-Agent" "Ni3ls3n"}
   		(if private {"Authorization" (str "Bearer " (:access_token (get-access-token)))})))
 
-  (if-let [response (http/get (str base-url endpoint)
+  (if-let [response (http/get endpoint
   	                 {:headers headers
                       :throw-exceptions false
-                      :query-params (assoc (into {} (filter (comp not nil? val) params)) "maxResults" limit "key" api-key)})]
+                      :query-params (assoc (into {} (filter (comp not nil? val) params)) "key" api-key)})]
     (let [body (json/read-str (:body response))
-    	  nextPageToken (get body "nextPageToken")
-    	  error (get body "error")]
+    	    error (get body "error")]
     	(if (nil? error)
-    		(let [return (apply conj data (get body "items"))]
-    		  (if (nil? nextPageToken)
-    		  	  return
-    			  (api-request endpoint (assoc params "pageToken" nextPageToken) limit return)))
-    	    error))
+        body
+        (throw (Exception. (str "Error: " error)))))
     (throw (Exception. "Error: No API response!"))))
