@@ -6,15 +6,14 @@
   	        [clojure.data.json :as json]
   	        [clj-time.format :as time-format]))
 
-(def api-key "AIzaSyA0Q9pv2p0MlYAWDlmyPcN19o59W31ytTI")
-(def client-id "320722306436-p6qjg69jvomcda1j77a0nee1uo40omia.apps.googleusercontent.com")
-(def client-secret "PTBLJmrqJL4oENO1PPOAe2To")
+(defn set-api-key [key]
+  (def api-key key))
 
-(def user {
-	:refresh_token "1/7qU7y2w3hsJRlRUlIjwaY7enunqRRSLrjJ8j8dDvaC8"
-	:access_token false
-	:timeout 0
-  :ip_address false})
+(defn set-client-id [cid]
+  (def client-id cid))
+
+(defn set-client-secret [secret]
+  (def client-secret secret))
 
 (defn set-user [refresh_token access_token ip_address]
   (def user (merge
