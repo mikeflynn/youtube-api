@@ -5,14 +5,17 @@
 (def base-url "https://www.googleapis.com/youtube/v3")
 
 (defn fetch [endpoint params limit headers private data]
-  (if-let [body (core/api-request (str base-url endpoint)
-                                  (assoc params "maxResults" limit)
-                                  headers
-                                  private)
-           return (apply conj data (get body "items"))]
-    (if (nil? nextPageToken)
-      return
-      (fetch (str base-url endpoint) (assoc params "pageToken" nextPageToken) limit headers private return))))
+  (if-let [body (apicore/api-request (str base-url endpoint)
+                                     (assoc params "maxResults" (if (< limit 50) limit 50))
+                                     headers
+                                     private)]
+    (let [items (get body "items")
+          return (if (nil? items) data (apply conj data items))
+          nextPageToken (if (< (count items) limit) (get body "nextPageToken") nil)]
+      (if (nil? nextPageToken)
+        return
+        (fetch endpoint (assoc params "pageToken" nextPageToken) (- limit (count items)) headers private return)))
+    (throw (Exception. "Error: Failed API request."))))
 
 ; API endpoint functions
 
@@ -34,20 +37,20 @@
                                      "channelId" channelId
                                      "home" home
                                      "mine" mine
-                                     "publishedAfter" (if (nil? publishedAfter) publishedAfter (core/date_format_iso8601 publishedAfter))
-                                     "publishedBefore" (if (nil? publishedBefore) publishedBefore (core/date_format_iso8601 publishedBefore))} maxResults {} true [])))
+                                     "publishedAfter" (if (nil? publishedAfter) publishedAfter (apicore/date_format_iso8601 publishedAfter))
+                                     "publishedBefore" (if (nil? publishedBefore) publishedBefore (apicore/date_format_iso8601 publishedBefore))} maxResults {} true [])))
 
-(defn guideCatagories-list [parts & {:keys [id regionCode hl]
+(defn guideCatagories-list [parts & {:keys [id regionCode hl maxResults]
                               :or {id nil regionCode nil hl nil maxResults 5}
                               :as argmap}]
 "https://developers.google.com/youtube/v3/docs/guideCategories/list"
   (if (and (nil? id) (nil? regionCode))
     (throw (Exception. "Error: Filter param missing (id, regionCode)!"))
     (fetch "/guideCategories" {"part" parts
-                                             "id" id
-                                             "regionCode" regionCode} maxResults {} true [])))
+                               "id" id
+                               "regionCode" regionCode} maxResults {} true [])))
 
-(defn playlistItems-list [parts & {:keys [id playlistId]
+(defn playlistItems-list [parts & {:keys [id playlistId maxResults]
                               :or {id nil playlistId nil maxResults 5}
                               :as argmap}]
 "https://developers.google.com/youtube/v3/docs/playlistItems/list"
@@ -57,7 +60,7 @@
                                              "id" id
                                              "playlistId" playlistId} maxResults {} true [])))
 
-(defn playlists-list [parts & {:keys [id channelId mine]
+(defn playlists-list [parts & {:keys [id channelId mine maxResults]
                               :or {id nil playlistId nil mine nil maxResults 5}
                               :as argmap}]
 "https://developers.google.com/youtube/v3/docs/playlists/list"
@@ -68,7 +71,7 @@
                                              "id" id
                                              "mine" mine} maxResults {} true [])))
 
-(defn subscriptions-list [parts & {:keys [id channelId mine forChannelId order]
+(defn subscriptions-list [parts & {:keys [id channelId mine forChannelId order maxResults]
                               :or {id nil playlistId nil mine nil forChannelId nil order "alphabetical" maxResults 5}
                               :as argmap}]
 "https://developers.google.com/youtube/v3/docs/subscriptions/list"
@@ -81,7 +84,7 @@
                                            "order" (if (= -1 (.indexOf '("alphabetical" "relevance" "unread") order)) "alphabetical" order)
                                            "forChannelId" forChannelId} maxResults {} true [])))
 
-(defn videoCategories-list [parts & {:keys [id regionCode hl]
+(defn videoCategories-list [parts & {:keys [id regionCode hl maxResults]
                               :or {id nil regionCode nil hl nil maxResults 5}
                               :as argmap}]
 "https://developers.google.com/youtube/v3/docs/videoCategories/list"
@@ -111,7 +114,8 @@
                                    videoDuration
                                    videoEmbeddable
                                    videoLicense
-                                   videoSyndicated]
+                                   videoSyndicated
+                                   maxResults]
                               :or {relatedToVideoId nil
                                    channelId nil
                                    order "date"
@@ -136,8 +140,8 @@
                                     "relatedToVideoId" relatedToVideoId
                                     "channelId" channelId
                                     "order" order
-                                    "publishedAfter" (if (nil? publishedAfter) publishedAfter (core/date_format_iso8601 publishedAfter))
-                                    "publishedBefore" (if (nil? publishedBefore) publishedBefore (core/date_format_iso8601 publishedBefore))
+                                    "publishedAfter" (if (nil? publishedAfter) publishedAfter (apicore/date_format_iso8601 publishedAfter))
+                                    "publishedBefore" (if (nil? publishedBefore) publishedBefore (apicore/date_format_iso8601 publishedBefore))
                                     "q" q
                                     "regionCode" regionCode
                                     "topicId" topicId
@@ -151,6 +155,3 @@
                                     "videoLicense" (if (= -1 (.indexOf '("any" "creativeCommon" "youtube") videoCaption)) "any" videoCaption)
                                     "videoSyndicated" (if (= -1 (.indexOf '("any" "true") videoCaption)) "any" videoCaption)
                                     } maxResults {} true []))
-
-(defn testingapi []
-	(channels-list "id,snippet,statistics" :mySubscribers "true"))

@@ -5,15 +5,16 @@
 (def base-url "https://www.googleapis.com/youtube/analytics/v1")
 
 (defn fetch [endpoint params limit headers private data & [n]]
-  (if-let [body (core/api-request (str base-url endpoint)
+  (if-let [body (apicore/api-request (str base-url endpoint)
   	                              (assoc params "max-results" limit "alt" "json")
   	                              headers
-  	                              private)
-           return (apply conj data (get body "items"))
-           page (if (nil? n) 1 n)]
-    (if (nil? nextPageToken)
-      return
-      (fetch (str base-url endpoint) (assoc params "start-index" (* limit page)) limit headers private return page))))
+  	                              private)]
+    (let [return (apply conj data (get body "items"))
+          page (if (nil? n) 1 n)]
+      (if (nil? page)
+        return
+        (fetch endpoint (assoc params "start-index" (* limit page)) limit headers private return page)))
+    (throw (Exception. "Error: Failed API request."))))
 
 ; API endpoint functions
 
@@ -31,8 +32,8 @@
   (if (and (nil? channel) (nil? contentOwner))
     (throw (Exception. "Error: Filter param missing (channel, contentOwner)!"))
     (apicore/api-request "/reports" {"metrics" metrics
-    	                             "start-date" (if (nil? start-date) start-date (core/date_format start-date))
-    	                             "end-date" (if (nil? publishedAfter) publishedAfter (core/date_format publishedAfter))
+    	                             "start-date" (if (nil? start-date) start-date (apicore/date_format_yyyymmdd start-date))
+    	                             "end-date" (if (nil? end-date) end-date (apicore/date_format_yyyymmdd end-date))
     	                             "ids" (if (not (nil? channel)) (str "channel==" channel) (if (not (nil? contentOwner)) (str "contentOwner==" contentOwner) "ERROR"))
                                      "dimensions" dimensions
                                      "filters" filters
