@@ -19,22 +19,22 @@
 ; API endpoint functions
 
 (defn report [metrics & {:keys [channel contentOwner start-date end-date dimensions filters sorting max-results]
-                              :or {channel nil
-                              	   contentOwner nil
-                              	   start-date nil
-                              	   end-date nil
-                              	   dimensions nil
-                              	   filters nil
-                              	   sorting nil
-                              	   max-results 5}
-                              :as argmap}]
+                         :or {channel nil
+                              contentOwner nil
+                              start-date nil
+                              end-date nil
+                              dimensions nil
+                              filters nil
+                              sorting nil
+                              max-results 5}
+                         :as argmap}]
 "https://developers.google.com/youtube/v3/docs/channels/list"
   (if (and (nil? channel) (nil? contentOwner))
     (throw (Exception. "Error: Filter param missing (channel, contentOwner)!"))
     (apicore/api-request "/reports" {"metrics" metrics
-    	                             "start-date" (if (nil? start-date) start-date (apicore/date_format_yyyymmdd start-date))
-    	                             "end-date" (if (nil? end-date) end-date (apicore/date_format_yyyymmdd end-date))
-    	                             "ids" (if (not (nil? channel)) (str "channel==" channel) (if (not (nil? contentOwner)) (str "contentOwner==" contentOwner) "ERROR"))
+    	                               "start-date" (if (nil? start-date) start-date (apicore/date_format_yyyymmdd start-date))
+    	                               "end-date" (if (nil? end-date) end-date (apicore/date_format_yyyymmdd end-date))
+    	                               "ids" (if (not (nil? channel)) (str "channel==" channel) (if (not (nil? contentOwner)) (str "contentOwner==" contentOwner) "ERROR"))
                                      "dimensions" dimensions
                                      "filters" filters
                                      "sort" sort} max-results {} true [])))

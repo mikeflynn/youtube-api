@@ -38,10 +38,10 @@
 	(if (or (false? (:access_token user)) (< (:timeout user) (System/currentTimeMillis)))
 		(if-let [response (http/post "https://accounts.google.com/o/oauth2/token"
 			                {:form-params {
-	                         :client_id client-id
-			                 :client_secret client-secret
-			                 :refresh_token (:refresh_token user)
-			                 :grant_type "refresh_token"}})]
+	                       :client_id client-id
+			                   :client_secret client-secret
+			                   :refresh_token (:refresh_token user)
+			                   :grant_type "refresh_token"}})]
 		  (let [authresp (json/read-str (:body response))]
 		  	(def user (assoc user :access_token (get authresp "access_token") :timeout (+ (System/currentTimeMillis) (* (int (get authresp "expires_in")) 1000)))))
 		  (throw (Exception. "Error: No authorization response!"))))
