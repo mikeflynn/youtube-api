@@ -19,12 +19,12 @@
     (let [per (if (nil? limit) 25 (if (< limit 50) limit 50))
           body (fetch endpoint (assoc params "maxResults" per) headers private)]
       (if-let [items (get body "items")]
-        (let [return (apply conj (if (nil? data) [] data) (if (nil? items) [] items))
+        (if (fn? data) (future (data items)))
+        (let [return (if (fn? data) data (apply conj (if (nil? data) [] data) (if (nil? items) [] items)))
               nextPageToken (get body "nextPageToken")
               nextLimit (- limit (count items))]
-          (println (str (count items) "/" nextPageToken))
           (if (or (nil? nextPageToken) (>= 0 nextLimit))
-              return
+              (if (not (fn? return)) return)
               (fetch-list endpoint
                           (assoc params "pageToken" nextPageToken)
                           headers
@@ -34,7 +34,7 @@
       (do
         (println "ERROR: Failed to get valid list API response.")
         (println body)
-        data)))
+        (if (not (fn? data)) data))))
     (catch Exception e (do (Thread/sleep 1000)
                            (fetch-list endpoint params headers private limit data)))))
 
@@ -48,8 +48,8 @@
                       :or {endpoint nil action nil}}]
   action))
 
-(defmethod api "list" [& {:keys [endpoint action params limit private headers]
-                          :or {endpoint nil action "list" params {} headers {} limit 25 private false}}]
+(defmethod api "list" [& {:keys [endpoint action params limit private headers resultfn]
+                          :or {endpoint nil action "list" params {} headers {} limit 25 private false resultfn nil}}]
   (let [defaults {:part "id,snippet"}
         params (conj defaults params)]
     (fetch-list endpoint
@@ -57,7 +57,7 @@
                 headers
                 (if private true false)
                 limit
-                [])))
+                (if (or (nil? resultfn) (not (fn? resultfn))) [] resultfn))))
 
 (defmethod api "insert" [& {:keys [endpoint action params headers limit private]
                             :or {endpoint nil action "insert" params {} headers {}}}]
